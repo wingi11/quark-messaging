@@ -21,7 +21,7 @@ public class CheckoutService {
 
 	@Incoming("checkout-request")
 	@Outgoing("checkout-response")
-	public Multi<CheckoutResponse> validateTextMessages(Multi<CheckoutRequest> requests) {
+	public Multi<CheckoutResponse> processCheckout(Multi<CheckoutRequest> requests) {
 		return requests
 				.onItem().transform(request -> {
 					System.out.println("Recieved request");
