@@ -1,0 +1,9 @@
+services:
+  book-service:
+    build:
+      context: ./book-service
+      dockerfile: ./src/main/docker/Dockerfile
+  checkout-service:
+    build:
+      context: ./checkout-service
+      dockerfile: ./src/main/docker/Dockerfile.jvm
