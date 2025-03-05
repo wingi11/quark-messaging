@@ -6,4 +6,4 @@ services:
   checkout-service:
     build:
       context: ./checkout-service
-      dockerfile: ./src/main/docker/Dockerfile.jvm
+      dockerfile: ./src/main/docker/Dockerfile
