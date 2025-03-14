@@ -37,8 +37,9 @@ public class BookResource {
 	}
 
 	@POST
-	@Transactional
+	// @Transactional
 	public List<Book> addBook(Book book) {
+		book.id = ObjectId.get();
 		book.persist();
 
 		return list();

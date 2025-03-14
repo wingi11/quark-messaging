@@ -30,7 +30,7 @@ services:
     container_name: book-service
     environment:
       - QUARKUS_KAFKA_BOOTSTRAP_SERVERS=redpanda:9092
-      - QUARKUS_MONGODB_CONNECTION_STRING=mongodb://mongo:27017
+      - QUARKUS_MONGODB_CONNECTION_STRING=mongodb://mongo:27017/?retryWrites=false
       - QUARKUS_MONGODB_DATABASE=books
       - QUARKUS_SWAGGER_UI_ALWAYS_INCLUDE=true
       - MP_MESSAGING_OUTGOING_CHECKOUT_REQUEST_CONNECTOR=smallrye-kafka
@@ -38,6 +38,13 @@ services:
       - MP_MESSAGING_OUTGOING_CHECKOUT_REQUEST_VALUE_SERIALIZER=io.quarkus.kafka.client.serialization.ObjectMapperSerializer
       - MP_MESSAGING_INCOMING_CHECKOUT_RESPONSE_CONNECTOR=smallrye-kafka
       - MP_MESSAGING_INCOMING_CHECKOUT_RESPONSE_TOPIC=checkout-response
+      - JAVA_NET_PREFER_IPV4_STACK=true
+      # OTEL
+      - QUARKUS_OTEL_ENABLED=true
+      - QUARKUS_OTEL_LOGS_ENABLED=true
+      - QUARKUS_OTEL_METRICS_ENABLED=true
+      - QUARKUS_OTEL_SERVICE_NAME=book-service
+      - QUARKUS_OTEL_EXPORTER_OTLP_ENDPOINT=http://lgtm:4317
     depends_on:
       - redpanda
       - mongo
@@ -57,7 +64,21 @@ services:
       - MP_MESSAGING_OUTGOING_CHECKOUT_RESPONSE_VALUE_SERIALIZER=io.quarkus.kafka.client.serialization.ObjectMapperSerializer
       - MP_MESSAGING_INCOMING_CHECKOUT_REQUEST_CONNECTOR=smallrye-kafka
       - MP_MESSAGING_INCOMING_CHECKOUT_REQUEST_TOPIC=checkout-request
+      - JAVA_NET_PREFER_IPV4_STACK=true
+      # OTEL
+      - QUARKUS_OTEL_ENABLED=true
+      - QUARKUS_OTEL_LOGS_ENABLED=true
+      - QUARKUS_OTEL_METRICS_ENABLED=true
+      - QUARKUS_OTEL_SERVICE_NAME=checkout-service
+      - QUARKUS_OTEL_EXPORTER_OTLP_ENDPOINT=http://lgtm:4317
     depends_on:
       - redpanda
+      - mongo
     ports:
       - "8081:8081"
+  lgtm:
+    image: grafana/otel-lgtm
+    ports:
+      - 3000:3000
+      - 4317:4317
+      - 4318:4318
