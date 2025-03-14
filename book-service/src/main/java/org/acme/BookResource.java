@@ -6,14 +6,11 @@ import org.eclipse.microprofile.reactive.messaging.Emitter;
 import org.jboss.resteasy.reactive.RestPath;
 
 import jakarta.inject.Inject;
-import jakarta.transaction.Transactional;
 import jakarta.ws.rs.BadRequestException;
-import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
-import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.Response;
 
 import java.util.List;
@@ -30,7 +27,6 @@ public class BookResource {
 	@Path("/checkout")
 	public Response checkoutBook(CheckoutRequest request) {
 		get(request.bookId());
-
 		checkoutEmitter.send(request);
 
 		return Response.accepted().build();

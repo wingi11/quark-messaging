@@ -1,20 +1,32 @@
 services:
-  redpanda:
-    image: docker.redpanda.com/redpandadata/redpanda:latest
-    container_name: redpanda
-    command:
-      - redpanda start
-      - --overprovisioned
-      - --smp 1
-      - --memory 1G
-      - --reserve-memory 0M
-      - --node-id 0
-      - --check=false
-      - --pandaproxy-addr 0.0.0.0:8082
-      - --kafka-addr 0.0.0.0:9092
-      - --advertise-kafka-addr redpanda:9092
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
     ports:
-      - "9092:9092"
+      - "2181:2181"
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    container_name: kafka
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      # OTel instrumentation for Kafka
+      KAFKA_OPTS: "-javaagent:/otel/opentelemetry-javaagent.jar -Dotel.service.name=kafka"
+      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://lgtm:4317"
+      OTEL_SERVICE_NAME: "apache-kafka"
+      OTEL_LOGS_ENABLED: "true"
+      OTEL_METRICS_ENABLED: "true"
+    volumes:
+      - ./otel:/otel # Ensure opentelemetry-javaagent.jar is placed in the ./otel folder
+    depends_on:
+      - zookeeper
   mongo:
     image: mongo:8.0.5
     container_name: mongo
@@ -29,24 +41,25 @@ services:
       dockerfile: ./src/main/docker/Dockerfile
     container_name: book-service
     environment:
-      - QUARKUS_KAFKA_BOOTSTRAP_SERVERS=redpanda:9092
+      - QUARKUS_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
       - QUARKUS_MONGODB_CONNECTION_STRING=mongodb://mongo:27017/?retryWrites=false
       - QUARKUS_MONGODB_DATABASE=books
       - QUARKUS_SWAGGER_UI_ALWAYS_INCLUDE=true
+      - MP_MESSAGING_CONNECTOR_SMALLRYE_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
       - MP_MESSAGING_OUTGOING_CHECKOUT_REQUEST_CONNECTOR=smallrye-kafka
       - MP_MESSAGING_OUTGOING_CHECKOUT_REQUEST_TOPIC=checkout-request
       - MP_MESSAGING_OUTGOING_CHECKOUT_REQUEST_VALUE_SERIALIZER=io.quarkus.kafka.client.serialization.ObjectMapperSerializer
       - MP_MESSAGING_INCOMING_CHECKOUT_RESPONSE_CONNECTOR=smallrye-kafka
       - MP_MESSAGING_INCOMING_CHECKOUT_RESPONSE_TOPIC=checkout-response
       - JAVA_NET_PREFER_IPV4_STACK=true
-      # OTEL
+      # OTEL for book-service
       - QUARKUS_OTEL_ENABLED=true
       - QUARKUS_OTEL_LOGS_ENABLED=true
       - QUARKUS_OTEL_METRICS_ENABLED=true
       - QUARKUS_OTEL_SERVICE_NAME=book-service
       - QUARKUS_OTEL_EXPORTER_OTLP_ENDPOINT=http://lgtm:4317
     depends_on:
-      - redpanda
+      - kafka
       - mongo
     ports:
       - "8080:8080"
@@ -57,28 +70,29 @@ services:
       dockerfile: ./src/main/docker/Dockerfile
     container_name: checkout-service
     environment:
-      - QUARKUS_KAFKA_BOOTSTRAP_SERVERS=redpanda:9092
+      - QUARKUS_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
       - QUARKUS_HTTP_PORT=8081
+      - MP_MESSAGING_CONNECTOR_SMALLRYE_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
       - MP_MESSAGING_OUTGOING_CHECKOUT_RESPONSE_CONNECTOR=smallrye-kafka
       - MP_MESSAGING_OUTGOING_CHECKOUT_RESPONSE_TOPIC=checkout-response
       - MP_MESSAGING_OUTGOING_CHECKOUT_RESPONSE_VALUE_SERIALIZER=io.quarkus.kafka.client.serialization.ObjectMapperSerializer
       - MP_MESSAGING_INCOMING_CHECKOUT_REQUEST_CONNECTOR=smallrye-kafka
       - MP_MESSAGING_INCOMING_CHECKOUT_REQUEST_TOPIC=checkout-request
       - JAVA_NET_PREFER_IPV4_STACK=true
-      # OTEL
+      # OTEL for checkout-service
       - QUARKUS_OTEL_ENABLED=true
       - QUARKUS_OTEL_LOGS_ENABLED=true
       - QUARKUS_OTEL_METRICS_ENABLED=true
       - QUARKUS_OTEL_SERVICE_NAME=checkout-service
       - QUARKUS_OTEL_EXPORTER_OTLP_ENDPOINT=http://lgtm:4317
     depends_on:
-      - redpanda
+      - kafka
       - mongo
     ports:
       - "8081:8081"
   lgtm:
     image: grafana/otel-lgtm
     ports:
-      - 3000:3000
-      - 4317:4317
-      - 4318:4318
+      - "3000:3000"
+      - "4317:4317"
+      - "4318:4318"
