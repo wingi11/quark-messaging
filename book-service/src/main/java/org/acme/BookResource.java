@@ -3,6 +3,7 @@ package org.acme;
 import org.bson.types.ObjectId;
 import org.eclipse.microprofile.reactive.messaging.Channel;
 import org.eclipse.microprofile.reactive.messaging.Emitter;
+import org.jboss.logging.Logger;
 import org.jboss.resteasy.reactive.RestPath;
 
 import jakarta.inject.Inject;
@@ -23,9 +24,14 @@ public class BookResource {
 	@Channel("checkout-request")
 	Emitter<CheckoutRequest> checkoutEmitter;
 
+	@Inject
+	Logger log;
+
 	@POST
 	@Path("/checkout")
 	public Response checkoutBook(CheckoutRequest request) {
+		log.info("Checkout request recieved for book: " + request.bookId());
+
 		get(request.bookId());
 		checkoutEmitter.send(request);
 
@@ -35,6 +41,7 @@ public class BookResource {
 	@POST
 	// @Transactional
 	public List<Book> addBook(Book book) {
+		log.info("Adding book: " + book.title);
 		book.id = ObjectId.get();
 		book.persist();
 
@@ -43,14 +50,19 @@ public class BookResource {
 
 	@GET
 	public List<Book> list() {
+		log.info("Listing books");
 		return Book.listAll();
 	}
 
 	@GET
 	@Path("{id}")
 	public Book get(@RestPath String id) {
-		if (!ObjectId.isValid(id))
+		log.info("Getting book: " + id);
+
+		if (!ObjectId.isValid(id)) {
+			log.warn("Invalid id: " + id);
 			throw new BadRequestException("Invalid id");
+		}
 
 		Optional<Book> book = Book.findByIdOptional(new ObjectId(id));
 
